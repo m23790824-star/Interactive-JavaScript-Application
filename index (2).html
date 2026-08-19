@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow — Interactive Task Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+  <div class="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-6 space-y-6">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between border-b border-slate-700 pb-4">
+      <div>
+        <h1 class="text-2xl font-bold text-white tracking-tight">TaskFlow</h1>
+        <p class="text-xs text-slate-400">Interactive Web App Sample</p>
+      </div>
+      <span id="task-counter" class="text-xs bg-indigo-500/20 text-indigo-400 font-semibold px-3 py-1 rounded-full border border-indigo-500/30">
+        0 Pending
+      </span>
+    </div>
+
+    <!-- Input Form -->
+    <form id="todo-form" class="flex gap-2">
+      <input 
+        type="text" 
+        id="todo-input" 
+        placeholder="Add a new task..." 
+        required
+        class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+      >
+      <button 
+        type="submit" 
+        class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition shadow-lg shadow-indigo-600/30"
+      >
+        Add
+      </button>
+    </form>
+
+    <!-- Filters -->
+    <div class="flex gap-2 text-xs font-medium">
+      <button id="filter-all" class="filter-btn bg-slate-700 text-white px-3 py-1.5 rounded-lg">All</button>
+      <button id="filter-active" class="filter-btn text-slate-400 hover:text-white px-3 py-1.5 rounded-lg">Active</button>
+      <button id="filter-completed" class="filter-btn text-slate-400 hover:text-white px-3 py-1.5 rounded-lg">Completed</button>
+    </div>
+
+    <!-- Task List -->
+    <ul id="todo-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+      <!-- Items will be dynamically added here -->
+    </ul>
+
+    <!-- Empty State Message -->
+    <div id="empty-state" class="text-center py-6 text-slate-500 text-xs">
+      No tasks found. Add your first task above!
+    </div>
+
+  </div>
+
+  <script>
+    let todos = JSON.parse(localStorage.getItem('taskflow_todos')) || [];
+    let currentFilter = 'all';
+
+    const form = document.getElementById('todo-form');
+    const input = document.getElementById('todo-input');
+    const list = document.getElementById('todo-list');
+    const emptyState = document.getElementById('empty-state');
+    const counter = document.getElementById('task-counter');
+
+    function saveAndRender() {
+      localStorage.setItem('taskflow_todos', JSON.stringify(todos));
+      render();
+    }
+
+    function render() {
+      list.innerHTML = '';
+      
+      let filteredTodos = todos.filter(todo => {
+        if (currentFilter === 'active') return !todo.completed;
+        if (currentFilter === 'completed') return todo.completed;
+        return true;
+      });
+
+      if (filteredTodos.length === 0) {
+        emptyState.classList.remove('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      filteredTodos.forEach((todo, index) => {
+        const li = document.createElement('li');
+        li.className = `flex items-center justify-between p-3 rounded-xl border ${todo.completed ? 'bg-slate-900/50 border-slate-800 text-slate-500 line-through' : 'bg-slate-900 border-slate-700 text-slate-200'} transition`;
+
+        li.innerHTML = `
+          <div class="flex items-center gap-3 cursor-pointer flex-1" onclick="toggleTodo(${todo.id})">
+            <span class="w-5 h-5 rounded-md border ${todo.completed ? 'bg-indigo-600 border-indigo-600' : 'border-slate-600'} flex items-center justify-center text-xs text-white">
+              ${todo.completed ? '✓' : ''}
+            </span>
+            <span class="text-sm font-medium">${escapeHtml(todo.text)}</span>
+          </div>
+          <button onclick="deleteTodo(${todo.id})" class="text-slate-500 hover:text-red-400 text-xs px-2 py-1 rounded transition">
+            ✕
+          </button>
+        `;
+        list.appendChild(li);
+      });
+
+      const activeCount = todos.filter(t => !t.completed).length;
+      counter.textContent = `${activeCount} Pending`;
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      todos.push({ id: Date.now(), text, completed: false });
+      input.value = '';
+      saveAndRender();
+    });
+
+    window.toggleTodo = function(id) {
+      todos = todos.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+      saveAndRender();
+    };
+
+    window.deleteTodo = function(id) {
+      todos = todos.filter(t => t.id !== id);
+      saveAndRender();
+    };
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    // Filter Buttons logic
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+          b.classList.remove('bg-slate-700', 'text-white');
+          b.classList.add('text-slate-400');
+        });
+        e.target.classList.add('bg-slate-700', 'text-white');
+        e.target.classList.remove('text-slate-400');
+
+        currentFilter = e.target.id.replace('filter-', '');
+        render();
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>
